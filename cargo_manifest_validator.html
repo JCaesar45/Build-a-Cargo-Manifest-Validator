@@ -1,0 +1,1606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargo Manifest Validator | Terminal Logistics System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #00ff88;
+            --neon-red: #ff0044;
+            --neon-yellow: #ffee00;
+            --dark-bg: #0a0a0f;
+            --darker-bg: #050508;
+            --panel-bg: rgba(10, 15, 25, 0.85);
+            --grid-line: rgba(0, 243, 255, 0.1);
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--darker-bg);
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated Grid Background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--grid-line) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes gridMove {
+            0% { transform: perspective(500px) rotateX(60deg) translateY(0); }
+            100% { transform: perspective(500px) rotateX(60deg) translateY(50px); }
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--neon-cyan);
+            border-radius: 50%;
+            animation: float 15s infinite;
+            opacity: 0.6;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.6; }
+            90% { opacity: 0.6; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+
+        /* Scanline Effect */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                transparent 50%,
+                rgba(0, 0, 0, 0.1) 50%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1000;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        /* Main Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .glitch-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 6vw, 4rem);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            position: relative;
+            color: var(--neon-cyan);
+            text-shadow: 
+                0 0 10px var(--neon-cyan),
+                0 0 20px var(--neon-cyan),
+                0 0 40px var(--neon-cyan);
+            animation: glitch 3s infinite;
+        }
+
+        .glitch-title::before,
+        .glitch-title::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch-title::before {
+            color: var(--neon-pink);
+            animation: glitch-1 2s infinite linear alternate-reverse;
+            clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+        }
+
+        .glitch-title::after {
+            color: var(--neon-green);
+            animation: glitch-2 2s infinite linear alternate-reverse;
+            clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+        }
+
+        @keyframes glitch {
+            0%, 90%, 100% { transform: translate(0); }
+            92% { transform: translate(-2px, 2px); }
+            94% { transform: translate(2px, -2px); }
+            96% { transform: translate(-2px, 0); }
+            98% { transform: translate(2px, 0); }
+        }
+
+        @keyframes glitch-1 {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+        }
+
+        @keyframes glitch-2 {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(3px, -3px); }
+            40% { transform: translate(3px, 3px); }
+            60% { transform: translate(-3px, -3px); }
+            80% { transform: translate(-3px, 3px); }
+        }
+
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--neon-green);
+            margin-top: 1rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+
+        /* Main Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel Styling */
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            box-shadow: 
+                0 0 30px rgba(0, 243, 255, 0.1),
+                inset 0 0 30px rgba(0, 243, 255, 0.05);
+        }
+
+        .panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .panel-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--neon-cyan);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-title::before {
+            content: '>';
+            color: var(--neon-green);
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--neon-cyan);
+            margin-bottom: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 
+                0 0 10px rgba(0, 243, 255, 0.3),
+                inset 0 0 10px rgba(0, 243, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .input-hint {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 0.3rem;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+
+        .form-group:focus-within .input-hint {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Checkbox Styling */
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            cursor: pointer;
+        }
+
+        .checkbox-custom {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 4px;
+            position: relative;
+            transition: all 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .checkbox-custom::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            width: 12px;
+            height: 12px;
+            background: var(--neon-green);
+            border-radius: 2px;
+            transition: transform 0.3s ease;
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        input[type="checkbox"]:checked + .checkbox-custom::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        input[type="checkbox"]:checked + .checkbox-custom {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+        }
+
+        input[type="checkbox"] {
+            display: none;
+        }
+
+        /* Button Styling */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 1rem 2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--neon-cyan), #0088aa);
+            color: #000;
+            font-weight: 700;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 10px 30px rgba(0, 243, 255, 0.4),
+                0 0 30px rgba(0, 243, 255, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 243, 255, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 243, 255, 0.2);
+        }
+
+        button:active {
+            transform: translateY(-1px);
+        }
+
+        /* Output Panel */
+        .output-section {
+            margin-top: 1rem;
+        }
+
+        .output-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tab {
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .tab.active {
+            background: rgba(0, 243, 255, 0.1);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(0, 243, 255, 0.05);
+            color: #fff;
+        }
+
+        .output-content {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 0 4px 4px 4px;
+            padding: 1.5rem;
+            min-height: 300px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .output-pane {
+            display: none;
+        }
+
+        .output-pane.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Terminal Output */
+        .terminal {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .terminal-line {
+            margin-bottom: 0.5rem;
+            opacity: 0;
+            animation: typeIn 0.3s ease forwards;
+        }
+
+        @keyframes typeIn {
+            to { opacity: 1; }
+        }
+
+        .terminal-prompt {
+            color: var(--neon-green);
+        }
+
+        .terminal-success {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .terminal-error {
+            color: var(--neon-red);
+            text-shadow: 0 0 10px rgba(255, 0, 68, 0.5);
+        }
+
+        .terminal-info {
+            color: var(--neon-cyan);
+        }
+
+        .terminal-warning {
+            color: var(--neon-yellow);
+        }
+
+        /* JSON Display */
+        .json-display {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .json-key {
+            color: var(--neon-pink);
+        }
+
+        .json-string {
+            color: var(--neon-green);
+        }
+
+        .json-number {
+            color: var(--neon-yellow);
+        }
+
+        .json-boolean {
+            color: var(--neon-cyan);
+        }
+
+        /* Visual Validator */
+        .visual-validator {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .field-card {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .field-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .field-card.valid {
+            border-color: var(--neon-green);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .field-card.valid::before {
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .field-card.invalid {
+            border-color: var(--neon-red);
+            background: rgba(255, 0, 68, 0.05);
+            animation: shake 0.5s ease;
+        }
+
+        .field-card.invalid::before {
+            background: var(--neon-red);
+            box-shadow: 0 0 10px var(--neon-red);
+        }
+
+        .field-card.missing {
+            border-color: var(--neon-yellow);
+            background: rgba(255, 238, 0, 0.05);
+        }
+
+        .field-card.missing::before {
+            background: var(--neon-yellow);
+            box-shadow: 0 0 10px var(--neon-yellow);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .field-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .field-name {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.3rem;
+        }
+
+        .field-status {
+            font-size: 0.7rem;
+            font-weight: bold;
+        }
+
+        .field-card.valid .field-status {
+            color: var(--neon-green);
+        }
+
+        .field-card.invalid .field-status {
+            color: var(--neon-red);
+        }
+
+        .field-card.missing .field-status {
+            color: var(--neon-yellow);
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .status-light {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: relative;
+        }
+
+        .status-light::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            animation: pulse-ring 2s ease-out infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+        }
+
+        .status-light.idle {
+            background: #666;
+        }
+
+        .status-light.processing {
+            background: var(--neon-yellow);
+            box-shadow: 0 0 20px var(--neon-yellow);
+        }
+
+        .status-light.success {
+            background: var(--neon-green);
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        .status-light.success::after {
+            background: var(--neon-green);
+        }
+
+        .status-light.error {
+            background: var(--neon-red);
+            box-shadow: 0 0 20px var(--neon-red);
+        }
+
+        .status-light.error::after {
+            background: var(--neon-red);
+        }
+
+        .status-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* Console Log */
+        .console-section {
+            margin-top: 2rem;
+        }
+
+        .console-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+
+        .console-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .console-dot.red { background: var(--neon-red); }
+        .console-dot.yellow { background: var(--neon-yellow); }
+        .console-dot.green { background: var(--neon-green); }
+
+        .console-title {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-left: 0.5rem;
+        }
+
+        .console-body {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            padding: 1rem;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .console-line {
+            margin-bottom: 0.3rem;
+            padding: 0.2rem 0;
+            border-left: 2px solid transparent;
+            padding-left: 0.5rem;
+        }
+
+        .console-line.log {
+            border-left-color: var(--neon-cyan);
+            color: #ccc;
+        }
+
+        .console-line.error {
+            border-left-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        .console-line.warn {
+            border-left-color: var(--neon-yellow);
+            color: var(--neon-yellow);
+        }
+
+        .console-line.info {
+            border-left-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .timestamp {
+            color: #666;
+            margin-right: 0.5rem;
+        }
+
+        /* History Section */
+        .history-section {
+            margin-top: 2rem;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            background: rgba(0, 243, 255, 0.05);
+            border-color: rgba(0, 243, 255, 0.3);
+            transform: translateX(5px);
+        }
+
+        .history-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .history-status.valid {
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+        }
+
+        .history-status.invalid {
+            background: var(--neon-red);
+            box-shadow: 0 0 10px var(--neon-red);
+        }
+
+        .history-id {
+            font-weight: bold;
+            color: var(--neon-cyan);
+            min-width: 60px;
+        }
+
+        .history-dest {
+            flex: 1;
+            color: #aaa;
+        }
+
+        .history-weight {
+            color: var(--neon-yellow);
+        }
+
+        .history-time {
+            font-size: 0.75rem;
+            color: #666;
+        }
+
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 243, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 243, 255, 0.5);
+        }
+
+        /* Loading Animation */
+        .loader {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10000;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .loader-ring {
+            width: 80px;
+            height: 80px;
+            border: 4px solid transparent;
+            border-top-color: var(--neon-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loader-ring::before,
+        .loader-ring::after {
+            content: '';
+            position: absolute;
+            border-radius: 50%;
+            border: 4px solid transparent;
+        }
+
+        .loader-ring::before {
+            top: 5px;
+            left: 5px;
+            right: 5px;
+            bottom: 5px;
+            border-top-color: var(--neon-pink);
+            animation: spin 2s linear infinite reverse;
+        }
+
+        .loader-ring::after {
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            bottom: 15px;
+            border-top-color: var(--neon-green);
+            animation: spin 3s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 2rem;
+            margin-top: 3rem;
+            border-top: 1px solid rgba(0, 243, 255, 0.1);
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: var(--neon-cyan);
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--neon-green);
+            text-shadow: 0 0 10px var(--neon-green);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .visual-validator {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Effects -->
+    <div class="grid-bg"></div>
+    <div class="particles" id="particles"></div>
+    <div class="scanlines"></div>
+
+    <!-- Loader -->
+    <div class="loader" id="loader">
+        <div class="loader-ring"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1 class="glitch-title" data-text="CARGO MANIFEST VALIDATOR">CARGO MANIFEST VALIDATOR</h1>
+            <p class="subtitle">Terminal Logistics System v2.0.77</p>
+        </header>
+
+        <div class="main-grid">
+            <!-- Input Panel -->
+            <div class="panel">
+                <h2 class="panel-title">Manifest Input</h2>
+
+                <form id="manifestForm">
+                    <div class="form-group">
+                        <label for="containerId">Container ID</label>
+                        <input type="number" id="containerId" name="containerId" placeholder="Enter positive integer...">
+                        <div class="input-hint">Must be a positive integer (e.g., 68)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="destination">Destination</label>
+                        <input type="text" id="destination" name="destination" placeholder="Enter destination...">
+                        <div class="input-hint">Non-empty string (e.g., Salinas, CA)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="weight">Weight</label>
+                        <input type="number" id="weight" name="weight" step="0.01" placeholder="Enter weight value...">
+                        <div class="input-hint">Positive number (e.g., 101.5)</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="unit">Unit</label>
+                        <select id="unit" name="unit">
+                            <option value="">Select unit...</option>
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="lb">Pounds (lb)</option>
+                        </select>
+                        <div class="input-hint">Choose weight unit</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" id="hazmat" name="hazmat">
+                            <span class="checkbox-custom"></span>
+                            <span>Hazardous Materials</span>
+                        </label>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="submit" class="btn-primary">Process Manifest</button>
+                        <button type="button" class="btn-secondary" id="clearBtn">Clear</button>
+                    </div>
+                </form>
+
+                <!-- Console Output -->
+                <div class="console-section">
+                    <div class="console-header">
+                        <div class="console-dot red"></div>
+                        <div class="console-dot yellow"></div>
+                        <div class="console-dot green"></div>
+                        <span class="console-title">System Console</span>
+                    </div>
+                    <div class="console-body" id="consoleBody">
+                        <div class="console-line info">
+                            <span class="timestamp">[00:00:00]</span>
+                            System initialized. Waiting for manifest input...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Output Panel -->
+            <div class="panel">
+                <h2 class="panel-title">Validation Results</h2>
+
+                <!-- Status Indicator -->
+                <div class="status-indicator" id="statusIndicator">
+                    <div class="status-light idle" id="statusLight"></div>
+                    <span class="status-text" id="statusText">System Idle</span>
+                </div>
+
+                <!-- Output Tabs -->
+                <div class="output-tabs">
+                    <div class="tab active" data-tab="terminal">Terminal</div>
+                    <div class="tab" data-tab="json">JSON</div>
+                    <div class="tab" data-tab="visual">Visual</div>
+                </div>
+
+                <div class="output-content">
+                    <!-- Terminal Pane -->
+                    <div class="output-pane active" id="terminalPane">
+                        <div class="terminal" id="terminalOutput">
+                            <div class="terminal-line">
+                                <span class="terminal-prompt">$</span> Waiting for manifest data...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- JSON Pane -->
+                    <div class="output-pane" id="jsonPane">
+                        <div class="json-display" id="jsonOutput">
+                            <span class="json-key">status</span>: <span class="json-string">"waiting"</span>
+                        </div>
+                    </div>
+
+                    <!-- Visual Pane -->
+                    <div class="output-pane" id="visualPane">
+                        <div class="visual-validator" id="visualOutput">
+                            <div class="field-card" data-field="containerId">
+                                <div class="field-icon">📦</div>
+                                <div class="field-name">Container ID</div>
+                                <div class="field-status">Pending</div>
+                            </div>
+                            <div class="field-card" data-field="destination">
+                                <div class="field-icon">📍</div>
+                                <div class="field-name">Destination</div>
+                                <div class="field-status">Pending</div>
+                            </div>
+                            <div class="field-card" data-field="weight">
+                                <div class="field-icon">⚖️</div>
+                                <div class="field-name">Weight</div>
+                                <div class="field-status">Pending</div>
+                            </div>
+                            <div class="field-card" data-field="unit">
+                                <div class="field-icon">📐</div>
+                                <div class="field-name">Unit</div>
+                                <div class="field-status">Pending</div>
+                            </div>
+                            <div class="field-card" data-field="hazmat">
+                                <div class="field-icon">☢️</div>
+                                <div class="field-name">Hazmat</div>
+                                <div class="field-status">Pending</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Section -->
+                <div class="history-section">
+                    <h3 class="panel-title" style="font-size: 1rem;">Processing History</h3>
+                    <div class="history-list" id="historyList">
+                        <!-- History items will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="footer-links">
+                <a href="#" onclick="loadSample('valid')">Load Valid Sample</a>
+                <a href="#" onclick="loadSample('invalid')">Load Invalid Sample</a>
+                <a href="#" onclick="loadSample('partial')">Load Partial Sample</a>
+            </div>
+            <p>Cargo Manifest Validator | Terminal Logistics System</p>
+            <p style="margin-top: 0.5rem; font-size: 0.7rem;">Built with precision for global logistics operations</p>
+        </footer>
+    </div>
+
+    <script>
+        // ============================================
+        // CARGO MANIFEST VALIDATOR - CORE FUNCTIONS
+        // ============================================
+
+        /**
+         * Normalizes weight to kilograms without mutating original
+         * @param {Object} manifest - The cargo manifest object
+         * @returns {Object} New manifest with weight in kg
+         */
+        function normalizeUnits(manifest) {
+            const normalized = { ...manifest };
+
+            if (normalized.unit === "lb") {
+                normalized.weight = normalized.weight * 0.45;
+                normalized.unit = "kg";
+            }
+
+            return normalized;
+        }
+
+        /**
+         * Validates manifest and returns error object
+         * @param {Object} manifest - The cargo manifest object
+         * @returns {Object} Empty if valid, or contains Missing/Invalid entries
+         */
+        function validateManifest(manifest) {
+            const errors = {};
+
+            // Container ID validation
+            if (!manifest.hasOwnProperty('containerId')) {
+                errors.containerId = "Missing";
+            } else if (!Number.isInteger(manifest.containerId) || manifest.containerId <= 0) {
+                errors.containerId = "Invalid";
+            }
+
+            // Destination validation
+            if (!manifest.hasOwnProperty('destination')) {
+                errors.destination = "Missing";
+            } else if (typeof manifest.destination !== 'string' || manifest.destination.trim() === '') {
+                errors.destination = "Invalid";
+            }
+
+            // Weight validation
+            if (!manifest.hasOwnProperty('weight')) {
+                errors.weight = "Missing";
+            } else if (typeof manifest.weight !== 'number' || Number.isNaN(manifest.weight) || manifest.weight <= 0) {
+                errors.weight = "Invalid";
+            }
+
+            // Unit validation
+            if (!manifest.hasOwnProperty('unit')) {
+                errors.unit = "Missing";
+            } else if (manifest.unit !== "kg" && manifest.unit !== "lb") {
+                errors.unit = "Invalid";
+            }
+
+            // Hazmat validation
+            if (!manifest.hasOwnProperty('hazmat')) {
+                errors.hazmat = "Missing";
+            } else if (typeof manifest.hazmat !== 'boolean') {
+                errors.hazmat = "Invalid";
+            }
+
+            return errors;
+        }
+
+        /**
+         * Processes manifest and logs results
+         * @param {Object} manifest - The cargo manifest object
+         */
+        function processManifest(manifest) {
+            const errors = validateManifest(manifest);
+            const isValid = Object.keys(errors).length === 0;
+
+            if (isValid) {
+                console.log(`Validation success: ${manifest.containerId}`);
+                const normalized = normalizeUnits(manifest);
+                console.log(`Total weight: ${normalized.weight} kg`);
+            } else {
+                console.log(`Validation error: ${manifest.containerId}`);
+                console.log(errors);
+            }
+        }
+
+        // ============================================
+        // UI CONTROLLER
+        // ============================================
+
+        class ManifestUI {
+            constructor() {
+                this.history = [];
+                this.init();
+            }
+
+            init() {
+                this.createParticles();
+                this.bindEvents();
+                this.startClock();
+            }
+
+            createParticles() {
+                const container = document.getElementById('particles');
+                for (let i = 0; i < 50; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 15 + 's';
+                    particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+                    container.appendChild(particle);
+                }
+            }
+
+            bindEvents() {
+                // Form submission
+                document.getElementById('manifestForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.handleSubmit();
+                });
+
+                // Clear button
+                document.getElementById('clearBtn').addEventListener('click', () => {
+                    this.clearForm();
+                });
+
+                // Tab switching
+                document.querySelectorAll('.tab').forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        this.switchTab(tab.dataset.tab);
+                    });
+                });
+            }
+
+            startClock() {
+                setInterval(() => {
+                    const now = new Date();
+                    const time = now.toTimeString().split(' ')[0];
+                    document.querySelectorAll('.timestamp').forEach(el => {
+                        if (el.textContent.includes('00:00:00')) {
+                            el.textContent = `[${time}]`;
+                        }
+                    });
+                }, 1000);
+            }
+
+            getFormData() {
+                const form = document.getElementById('manifestForm');
+                const formData = new FormData(form);
+                const data = {};
+
+                // Container ID
+                const containerIdVal = formData.get('containerId');
+                if (containerIdVal) {
+                    const parsed = parseInt(containerIdVal);
+                    data.containerId = isNaN(parsed) ? containerIdVal : parsed;
+                }
+
+                // Destination
+                const destVal = formData.get('destination');
+                if (destVal !== '') {
+                    data.destination = destVal;
+                }
+
+                // Weight
+                const weightVal = formData.get('weight');
+                if (weightVal !== '') {
+                    const parsed = parseFloat(weightVal);
+                    data.weight = isNaN(parsed) ? weightVal : parsed;
+                }
+
+                // Unit
+                const unitVal = formData.get('unit');
+                if (unitVal) {
+                    data.unit = unitVal;
+                }
+
+                // Hazmat
+                data.hazmat = formData.get('hazmat') === 'on';
+
+                return data;
+            }
+
+            handleSubmit() {
+                const manifest = this.getFormData();
+
+                this.setStatus('processing', 'Processing...');
+                this.logToConsole('Processing manifest...', 'info');
+
+                setTimeout(() => {
+                    const errors = validateManifest(manifest);
+                    const isValid = Object.keys(errors).length === 0;
+
+                    if (isValid) {
+                        const normalized = normalizeUnits(manifest);
+                        this.handleSuccess(manifest, normalized);
+                    } else {
+                        this.handleError(manifest, errors);
+                    }
+
+                    this.addToHistory(manifest, isValid);
+                }, 800);
+            }
+
+            handleSuccess(manifest, normalized) {
+                this.setStatus('success', 'Validation Successful');
+
+                // Terminal output
+                const terminal = document.getElementById('terminalOutput');
+                terminal.innerHTML = `
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">$</span> processManifest(manifest)
+                    </div>
+                    <div class="terminal-line terminal-success">
+                        ✓ Validation success: ${manifest.containerId}
+                    </div>
+                    <div class="terminal-line terminal-info">
+                        Total weight: ${normalized.weight} kg
+                    </div>
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">$</span> normalizeUnits(manifest)
+                    </div>
+                    <div class="terminal-line terminal-info">
+                        { containerId: ${normalized.containerId}, weight: ${normalized.weight.toFixed(2)}, unit: "${normalized.unit}" }
+                    </div>
+                `;
+
+                // JSON output
+                this.displayJSON({
+                    status: "valid",
+                    original: manifest,
+                    normalized: normalized,
+                    message: `Validation success: ${manifest.containerId}`
+                });
+
+                // Visual output
+                this.updateVisualCards({
+                    containerId: 'valid',
+                    destination: 'valid',
+                    weight: 'valid',
+                    unit: 'valid',
+                    hazmat: 'valid'
+                });
+
+                // Console log
+                this.logToConsole(`Validation success: ${manifest.containerId}`, 'info');
+                this.logToConsole(`Total weight: ${normalized.weight} kg`, 'info');
+            }
+
+            handleError(manifest, errors) {
+                this.setStatus('error', 'Validation Failed');
+
+                // Terminal output
+                const terminal = document.getElementById('terminalOutput');
+                let errorLines = `
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">$</span> processManifest(manifest)
+                    </div>
+                    <div class="terminal-line terminal-error">
+                        ✗ Validation error: ${manifest.containerId || 'undefined'}
+                    </div>
+                `;
+
+                for (const [field, status] of Object.entries(errors)) {
+                    errorLines += `<div class="terminal-line terminal-error">  ${field}: "${status}"</div>`;
+                }
+
+                terminal.innerHTML = errorLines;
+
+                // JSON output
+                this.displayJSON({
+                    status: "invalid",
+                    errors: errors,
+                    manifest: manifest
+                });
+
+                // Visual output
+                const visualStatus = {};
+                const allFields = ['containerId', 'destination', 'weight', 'unit', 'hazmat'];
+
+                allFields.forEach(field => {
+                    if (errors[field]) {
+                        visualStatus[field] = errors[field].toLowerCase();
+                    } else {
+                        visualStatus[field] = 'valid';
+                    }
+                });
+
+                this.updateVisualCards(visualStatus);
+
+                // Console log
+                this.logToConsole(`Validation error: ${manifest.containerId || 'undefined'}`, 'error');
+                this.logToConsole(JSON.stringify(errors), 'error');
+            }
+
+            setStatus(type, text) {
+                const light = document.getElementById('statusLight');
+                const statusText = document.getElementById('statusText');
+
+                light.className = 'status-light ' + type;
+                statusText.textContent = text;
+
+                if (type === 'success') {
+                    statusText.style.color = 'var(--neon-green)';
+                } else if (type === 'error') {
+                    statusText.style.color = 'var(--neon-red)';
+                } else if (type === 'processing') {
+                    statusText.style.color = 'var(--neon-yellow)';
+                } else {
+                    statusText.style.color = '#e0e0e0';
+                }
+            }
+
+            displayJSON(data) {
+                const output = document.getElementById('jsonOutput');
+                const json = JSON.stringify(data, null, 2);
+                const highlighted = json
+                    .replace(/"(key|status|errors|manifest|original|normalized|message)":/g, '<span class="json-key">"$1"</span>:' )
+                    .replace(/: "([^"]*)"/g, ': <span class="json-string">"$1"</span>')
+                    .replace(/: (\d+\.?\d*)/g, ': <span class="json-number">$1</span>')
+                    .replace(/: (true|false)/g, ': <span class="json-boolean">$1</span>');
+
+                output.innerHTML = highlighted;
+            }
+
+            updateVisualCards(status) {
+                const cards = document.querySelectorAll('.field-card');
+
+                cards.forEach(card => {
+                    const field = card.dataset.field;
+                    const statusEl = card.querySelector('.field-status');
+
+                    card.classList.remove('valid', 'invalid', 'missing');
+
+                    if (status[field] === 'valid') {
+                        card.classList.add('valid');
+                        statusEl.textContent = 'Valid';
+                    } else if (status[field] === 'missing') {
+                        card.classList.add('missing');
+                        statusEl.textContent = 'Missing';
+                    } else if (status[field] === 'invalid') {
+                        card.classList.add('invalid');
+                        statusEl.textContent = 'Invalid';
+                    } else {
+                        statusEl.textContent = 'Pending';
+                    }
+                });
+            }
+
+            switchTab(tabName) {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.output-pane').forEach(p => p.classList.remove('active'));
+
+                document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+                document.getElementById(tabName + 'Pane').classList.add('active');
+            }
+
+            logToConsole(message, type = 'log') {
+                const consoleBody = document.getElementById('consoleBody');
+                const now = new Date();
+                const time = now.toTimeString().split(' ')[0];
+
+                const line = document.createElement('div');
+                line.className = `console-line ${type}`;
+                line.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+
+                consoleBody.appendChild(line);
+                consoleBody.scrollTop = consoleBody.scrollHeight;
+            }
+
+            addToHistory(manifest, isValid) {
+                const historyList = document.getElementById('historyList');
+                const now = new Date();
+                const time = now.toLocaleTimeString();
+
+                const item = document.createElement('div');
+                item.className = 'history-item';
+                item.innerHTML = `
+                    <div class="history-status ${isValid ? 'valid' : 'invalid'}"></div>
+                    <div class="history-id">#${manifest.containerId || '?'}</div>
+                    <div class="history-dest">${manifest.destination || 'N/A'}</div>
+                    <div class="history-weight">${manifest.weight || 0} ${manifest.unit || ''}</div>
+                    <div class="history-time">${time}</div>
+                `;
+
+                item.addEventListener('click', () => {
+                    this.loadManifest(manifest);
+                });
+
+                historyList.insertBefore(item, historyList.firstChild);
+
+                // Keep only last 10
+                while (historyList.children.length > 10) {
+                    historyList.removeChild(historyList.lastChild);
+                }
+            }
+
+            loadManifest(manifest) {
+                document.getElementById('containerId').value = manifest.containerId || '';
+                document.getElementById('destination').value = manifest.destination || '';
+                document.getElementById('weight').value = manifest.weight || '';
+                document.getElementById('unit').value = manifest.unit || '';
+                document.getElementById('hazmat').checked = manifest.hazmat || false;
+
+                this.logToConsole('Loaded manifest from history', 'info');
+            }
+
+            clearForm() {
+                document.getElementById('manifestForm').reset();
+                this.setStatus('idle', 'System Idle');
+
+                document.getElementById('terminalOutput').innerHTML = `
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">$</span> Waiting for manifest data...
+                    </div>
+                `;
+
+                document.getElementById('jsonOutput').innerHTML = `
+                    <span class="json-key">status</span>: <span class="json-string">"waiting"</span>
+                `;
+
+                document.querySelectorAll('.field-card').forEach(card => {
+                    card.classList.remove('valid', 'invalid', 'missing');
+                    card.querySelector('.field-status').textContent = 'Pending';
+                });
+
+                this.logToConsole('Form cleared', 'info');
+            }
+        }
+
+        // Sample data loader
+        function loadSample(type) {
+            const ui = window.manifestUI;
+            let sample = {};
+
+            switch(type) {
+                case 'valid':
+                    sample = {
+                        containerId: 68,
+                        destination: "Salinas",
+                        weight: 101,
+                        unit: "lb",
+                        hazmat: true
+                    };
+                    break;
+                case 'invalid':
+                    sample = {
+                        containerId: -5,
+                        destination: "   ",
+                        weight: -100,
+                        unit: "tons",
+                        hazmat: "yes"
+                    };
+                    break;
+                case 'partial':
+                    sample = {
+                        destination: "Santa Cruz",
+                        hazmat: false
+                    };
+                    break;
+            }
+
+            ui.loadManifest(sample);
+            ui.logToConsole(`Loaded ${type} sample data`, 'info');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            window.manifestUI = new ManifestUI();
+        });
+    </script>
+</body>
+</html>
